@@ -1,12 +1,8 @@
 <?php
-
 /**
- * Khalti.com Payment Gateway WHMCS Module
- * 
- * @see https://docs.khalti.com/
- * 
- * @copyright Copyright (c) Khalti Private Limited
- * @author : @acpmasquerade for Khalti.com
+ * MyPay Payment Gateway WHMCS Module
+ * @copyright Copyright (c) MyPay Digital Wallet
+ * @author : MyPay Digital Wallet
  */
 
 

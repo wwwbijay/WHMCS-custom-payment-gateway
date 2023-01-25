@@ -1,5 +1,4 @@
 <?php
-
 /**
  * MyPay Payment Gateway WHMCS Module
  * @copyright Copyright (c) MyPay Digital Wallet
@@ -20,12 +19,14 @@ function mypaygateway_invoicepage_code($params)
     $amount = $params['amount'];
     $currency_code = $params['currency'];
 
-    if (!mypaygateway_validate_currency($currency_code)) {
-        $npr_amount = mypaygateway_convert_currency($currency_code, $amount);
-        if ($npr_amount === false) {
-            return mypaygateway_invalid_currency_page();
-        }
-        mypaygateway_debug($params, "Converted amount: {$npr_amount} from {$amount} {$currency_code} to NPR");
+    $user_name = $params['user_name'];
+    $password = $params['password'];
+    $merchantID = $params['merchantID'];
+
+
+    if ($currency_code != "NPR") {
+        return mypaygateway_invalid_currency_page();
+        // $npr_amount = mypaygateway_convert_currency($currency_code, $amount);
     } else {
         $npr_amount = $amount;
     }
@@ -50,10 +51,7 @@ function mypaygateway_invoicepage_code($params)
         $amount = $item->getAmount()->getValue();
         $currency_code = $item->getAmount()->getCurrency()['code'];
         if (!mypaygateway_validate_currency($currency_code)) {
-            $amount = mypaygateway_convert_currency($currency_code, $amount);
-            if ($amount === false) {
-                return mypaygateway_invalid_currency_page();
-            }
+            return mypaygateway_invalid_currency_page();
         }
 
         $item_amount_in_paisa = intval($amount * 100);
@@ -68,34 +66,46 @@ function mypaygateway_invoicepage_code($params)
         );
     }
 
+    $payment_constant = 10000000;
+
     $checkout_args = array(
-        "return_url" => "{$callback_url}",
-        "website_url" => "{$system_url}",
-        "amount" => $npr_amount_in_paisa,
-        "purchase_order_id" => "{$invoice_id}",
-        "purchase_order_name" => "{$description}",
-        "customer_info" => array(
-            "name" => $customer_name,
-            "email" => $customer_email,
-            "phone" => $customer_phone_number
-        ),
-        "amount_breakdown" => array(
-            array(
-                "label" => "Invoice Number - {$invoice_id}",
-                "amount" => $npr_amount_in_paisa
-            ),
-        ),
-        "product_details" => $cart
-    );
+        "Amount"  => $npr_amount,
+        "OrderId" => ($invoice_id + $payment_constant),
+        "UserName" => $user_name,
+        "Password" => $password,
+        "MerchantId" => $merchantID,
+  );
+    // $checkout_args = array(
+    //     "return_url" => "{$callback_url}",
+    //     "website_url" => "{$system_url}",
+    //     "amount" => $npr_amount_in_paisa,
+    //     "purchase_order_id" => "{$invoice_id}",
+    //     "purchase_order_name" => "{$description}",
+    //     "customer_info" => array(
+    //         "name" => $customer_name,
+    //         "email" => $customer_email,
+    //         "phone" => $customer_phone_number
+    //     ),
+    //     "amount_breakdown" => array(
+    //         array(
+    //             "label" => "Invoice Number - {$invoice_id}",
+    //             "amount" => $npr_amount_in_paisa
+    //         ),
+    //     ),
+    //     "product_details" => $cart
+    // );
+
+    
 
     return mypaygateway_pidx_page($params, $npr_amount, $checkout_args);
 }
 
 function mypaygateway_pidx_page($params, $npr_amount, $checkout_args){
-    $payment_initiate = mypaygateway_epay_initiate($params, $checkout_args);
-    $pidx = $payment_initiate["pidx"];
+    $payment_initiate = mypaygateway_initiate($params, $checkout_args);
 
-    if (!$pidx) {
+    $response_body =  $payment_initiate['body'];
+
+    if (!$response_body['status']) {
         return file_get_contents(__DIR__ . "/templates/initiate_failed.html");
     }
 
@@ -106,9 +116,11 @@ function mypaygateway_pidx_page($params, $npr_amount, $checkout_args){
      * gateway_params
      * npr_amount
      */
-    $pidx_url = $payment_initiate["payment_url"];
+    $pidx_url = $response_body['RedirectURL'];
+    // $pidx_url = $payment_initiate["payment_url"];
+
     return file_include_contents(__DIR__ . "/templates/invoice_payment_button.php", array(
-        'khalti_logo_url' => 'https://khalti-mediakit.s3.ap-south-1.amazonaws.com/brand/khalti-logo-color.200.png',
+        'mypay_logo_url' => 'https://mypay.com.np/frontend/images/logo.png',
         "pidx_url" => $pidx_url,
         "button_css" => "",
         "gateway_params" => $params,

@@ -1,18 +1,15 @@
 <?php
 
 /**
- * Khalti.com Payment Gateway WHMCS Module
- * 
- * @see https://docs.khalti.com/
- * 
- * @copyright Copyright (c) Khalti Private Limited
- * @author : @acpmasquerade for Khalti.com
+ * MyPay Payment Gateway WHMCS Module
+ * @copyright Copyright (c) MyPay Digital Wallet
+ * @author : MyPay Digital Wallet
  */
 
 
-function khaltigateway_acknowledge_whmcs_for_payment($post_data)
+function mypaygateway_acknowledge_whmcs_for_payment($post_data)
 {
-    $khalti_transaction_id = $post_data["khalti_transaction_id"];
+    $mypay_transaction_id = $post_data["mypay_transaction_id"];
 
     $wh_payload = $post_data['wh_payload'];
     $wh_response = $post_data['wh_response'];
@@ -33,7 +30,7 @@ function khaltigateway_acknowledge_whmcs_for_payment($post_data)
      *
      * @param string $transactionId Unique Transaction ID
      */
-    checkCbTransID($khalti_transaction_id);
+    checkCbTransID($mypay_transaction_id);
 
     /**
      * Log Transaction.
@@ -49,7 +46,7 @@ function khaltigateway_acknowledge_whmcs_for_payment($post_data)
      */
     $debugData = json_encode(array(
         'payload' => $wh_payload,
-        'khalti_response' => $wh_response,
+        'mypay_response' => $wh_response,
         'invoiceId' => $wh_invoiceId
     ));
 

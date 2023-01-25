@@ -42,9 +42,9 @@ function mypaygateway_whmcs_current_page()
     return str_replace(".PHP", "", strtoupper($filename));
 }
 
-function mypaygateway_get_production_mode($gateway_params)
+function mypaygateway_get_production_mode($params)
 {
-    $is_test_mode = $gateway_params['is_test_mode'] == "on";
+    $is_test_mode = $params['is_test_mode'] == "on";
 
     # more explicit check for live mode
     if($is_test_mode) {
@@ -54,40 +54,47 @@ function mypaygateway_get_production_mode($gateway_params)
     }
 }
 
-function mypaygateway_debug($gateway_params, $data)
+function mypaygateway_debug($params, $data)
 {
-    $is_debug_mode = $gateway_params['is_debug_mode'] == "on";
+    $is_debug_mode = $params['is_debug_mode'] == "on";
 
     if ($is_debug_mode) {
         echo <<<EOT
         <div class='alert alert-warning' style='margin:0 10%; border-left:10px solid #5E338D;'>
-        <strong>Debug Information for Khalti Payment Gateway</strong>
+        <strong>Debug Information for MyPay Payment Gateway</strong>
         EOT;
         ndie($data);
         echo "</div>";
     }
 }
 
-function mypaygateway_epay_api_endpoint($gateway_params)
+function mypaygateway_api_endpoint($params)
 {
-    $mode_name = mypaygateway_get_production_mode($gateway_params);
-    return constant("MYPAYGATEWAY_EPAY_" . strtoupper($mode_name) . "_ENDPOINT");
+    $mode_name = mypaygateway_get_production_mode($params);
+    return constant("MYPAYGATEWAY_" . strtoupper($mode_name) . "_ENDPOINT");
 }
 
-function mypaygateway_epay_api_authentication_key($gateway_params)
+function mypaygateway_initiate($params, $checkout_params)
 {
-    $mode_name = mypaygateway_get_production_mode($gateway_params);
-    return $gateway_params["{$mode_name}_api_key"];
+    return mypaygateway_make_api_call($params, MYPAYGATEWAY_INITIATE_API, $checkout_params);
 }
 
-function mypaygateway_make_api_call($gateway_params, $api, $payload)
+function mypaygateway_make_api_call($params, $api, $payload)
 {
     if (!$api) {
         return null;
     }
 
-    $url = mypaygateway_epay_api_endpoint($gateway_params) . $api;
-    $api_key = mypaygateway_epay_api_authentication_key($gateway_params);
+    $testMode = $params['testMode'];
+
+    if($testMode == 'yes'){
+            $base_url = 'https://testapi.mypay.com.np';
+        }else{
+            $base_url = 'https://smartdigitalnepal.com';
+        }
+
+    $url = $base_url. '/api/use-mypay-payments';
+    $api_key = $params['api_key'];
 
     $post_data = json_encode($payload);
 
@@ -100,33 +107,20 @@ function mypaygateway_make_api_call($gateway_params, $api, $payload)
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/json',
-        'Authorization: Key ' . $api_key,
+        'Content-Type' => 'application/json',
+		'API_KEY' => $api_key,
     ));
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
     $response = curl_exec($ch);
     if (curl_error($ch)) {
-        mypaygateway_debug($gateway_params, $ch);
+        mypaygateway_debug($params, $ch);
         return null;
     }
     curl_close($ch);
 
-    mypaygateway_debug($gateway_params, $response);
+    mypaygateway_debug($params, $response);
 
     return json_decode($response, true);
-}
-
-function mypaygateway_epay_initiate($gateway_params, $checkout_params)
-{
-    return mypaygateway_make_api_call($gateway_params, MYPAYGATEWAY_EPAY_INITIATE_API, $checkout_params);
-}
-
-function mypaygateway_epay_lookup($gateway_params, $pidx)
-{
-    $payload = array(
-        "pidx" => $pidx
-    );
-    return mypaygateway_make_api_call($gateway_params, MYPAYGATEWAY_EPAY_LOOKUP_API, $payload);
 }
 
 function mypaygateway_whmcs_local_api($command, $args){

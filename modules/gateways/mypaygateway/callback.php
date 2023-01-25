@@ -1,13 +1,10 @@
 <?php
-
 /**
- * Khalti.com Payment Gateway WHMCS Module
- * 
- * @see https://docs.khalti.com/
- * 
- * @copyright Copyright (c) Khalti Private Limited
- * @author : @acpmasquerade for Khalti.com
+ * MyPay Payment Gateway WHMCS Module
+ * @copyright Copyright (c) MyPay Digital Wallet
+ * @author : MyPay Digital Wallet
  */
+
 
 header("Content-Type: application/json");
 // Require libraries needed for gateway module functions.
@@ -19,20 +16,21 @@ require_once $WHMCS_ROOT . "/init.php";
 $whmcs->load_function('gateway');
 $whmcs->load_function('invoice');
 
-// load the khaltigateway init file
+// load the mypaygateway init file
 require_once __DIR__ . "/init.php";
 require_once __DIR__ . "/whmcs.php";
 
 $callback_args = $_GET;
 
 $pidx = $callback_args['pidx'];
-$khalti_transaction_id = $callback_args['transaction_id'] ? $callback_args['transaction_id'] : $callback_args['txnId'];
-
+$mypay_transaction_id = $callback_args['MerchantTransactionId'] ? $callback_args['MerchantTransactionId'] : $callback_args['txnId'];
+//amount not sending via callback in mypay
 $amount_paisa = intval($callback_args['amount']);
 $amount_rs = $amount_paisa / 100;
+//purchase id not sending via callback in mypay
 $invoice_id = $callback_args['purchase_order_id'];
 
-$gateway_module = $khaltigateway_gateway_params['paymentmethod'];
+$gateway_module = $mypaygateway_gateway_params['paymentmethod'];
 
 function error_resp($msg)
 {
@@ -40,11 +38,11 @@ function error_resp($msg)
     die($msg);
 }
 
-if (!$khalti_transaction_id || !$amount_paisa) {
+if (!$mypay_transaction_id || !$amount_paisa) {
     error_resp("Insufficient Data to proceed.");
 }
 
-$response = khaltigateway_epay_lookup($khaltigateway_gateway_params, $pidx);
+$response = mypaygateway_epay_lookup($mypaygateway_gateway_params, $pidx);
 
 if (!$response) {
     error_resp("Confirmation Failed.");
@@ -70,18 +68,18 @@ $wh_response = $response;
 $wh_invoiceId = $invoice_id;
 $wh_paymentAmount = $amount_rs;
 $wh_payload = $callback_args;
-$wh_transactionId = $khalti_transaction_id;
+$wh_transactionId = $mypay_transaction_id;
 $wh_paymentSuccess = true;
 $wh_paymentFee = 0.0;
 $wh_gatewayModule = $gateway_module;
 
 // convert from NPR to base currency
-$wh_amount_in_base_currency = khaltigateway_convert_from_npr_to_basecurrency($amount_rs);
+$wh_amount_in_base_currency = mypaygateway_convert_from_npr_to_basecurrency($amount_rs);
 
 // Fetch the actual invoice details
 $invoice = localAPI("GetInvoice", array("invoiceid" => $invoice_id));
 
-$khaltigateway_whmcs_submit_data = array(
+$mypaygateway_whmcs_submit_data = array(
     'wh_payload' => $wh_payload,
     'wh_response' => $wh_response,
     'wh_invoiceId' => $wh_invoiceId,
@@ -93,4 +91,4 @@ $khaltigateway_whmcs_submit_data = array(
 );
 
 // Submit the data to whmcs
-khaltigateway_acknowledge_whmcs_for_payment($khaltigateway_whmcs_submit_data);
+mypaygateway_acknowledge_whmcs_for_payment($mypaygateway_whmcs_submit_data);
